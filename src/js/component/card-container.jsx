@@ -1,11 +1,20 @@
 import MyCard from "./my-card.jsx";
 import ListGroup from "react-bootstrap/ListGroup";
 import MyFooter from "./my-footer.jsx";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const CardContainer = () => {
-	const [items, setItems] = useState(["aaaaaaa"]);
+	const [items, setItems] = useState([]);
 	const [todo, setTodo] = useState("");
+	const endpoint =
+		"https://assets.breatheco.de/apis/fake/todos/user/vitor-tamberlini";
+	const myHeaders = new Headers();
+	myHeaders.append("Content-Type", "application/json");
+
+	const requestOptions = {
+		headers: myHeaders,
+		redirect: "follow",
+	};
 
 	function handleInput(event) {
 		setTodo(event.target.value);
@@ -25,6 +34,42 @@ const CardContainer = () => {
 		newItems.splice(index, 1);
 		setItems(newItems);
 	}
+
+	function initializeItems() {
+		fetch(endpoint, {
+			...requestOptions,
+			method: "POST",
+			body: "[]",
+		})
+			.then((response) => {
+				if (response.status === 400 || response.status === 200) {
+					return fetchItems();
+				}
+			})
+			.catch((error) => console.log(error));
+	}
+
+	function fetchItems() {
+		let response;
+
+		fetch(endpoint, { ...requestOptions, method: "GET" })
+			.then((response) => response.json())
+			.then((json) => {
+				response = structureItems(json);
+			})
+			.catch((error) => console.log(error));
+
+		console.log(response);
+		return response;
+	}
+
+	function structureItems(json) {
+		return json.map((jsonItem) => jsonItem.label);
+	}
+
+	useEffect(() => {
+		// console.log("aaaa", initializeItems());
+	}, []);
 
 	return (
 		<ListGroup>
