@@ -23,7 +23,8 @@ const CardContainer = () => {
 	function handleEnter(event) {
 		if (event.key === "Enter") {
 			if (todo !== "") {
-				setItems(items.concat(todo));
+				const newItems = items.concat(todo);
+				updateItems(newItems);
 				setTodo("");
 			}
 		}
@@ -32,44 +33,81 @@ const CardContainer = () => {
 	function handleRemove(event, index) {
 		const newItems = [...items];
 		newItems.splice(index, 1);
-		setItems(newItems);
+		updateItems(newItems);
 	}
 
-	function initializeItems() {
-		fetch(endpoint, {
+	async function deleteItems() {
+		const response = await fetch(endpoint, {
+			...requestOptions,
+			method: "DELETE",
+		});
+
+		if (response.status === 200 || response.status === 500) {
+			setItems([]);
+		}
+	}
+
+	async function updateItems(newItems) {
+		if (items.length === 0) {
+			await initializeItems();
+			console.log(items);
+		}
+
+		if (newItems === []) {
+			await deleteItems();
+			return;
+		}
+
+		const body = JSON.stringify(
+			newItems.map((i) => {
+				return { label: i, done: false };
+			})
+		);
+
+		const response = await fetch(endpoint, {
+			...requestOptions,
+			method: "PUT",
+			body,
+		});
+		if (response.status === 400) {
+			deleteItems();
+		} else {
+			setItems(newItems);
+		}
+	}
+
+	async function initializeItems() {
+		const response = await fetch(endpoint, {
 			...requestOptions,
 			method: "POST",
 			body: "[]",
-		})
-			.then((response) => {
-				if (response.status === 400 || response.status === 200) {
-					return fetchItems();
-				}
-			})
-			.catch((error) => console.log(error));
+		});
+
+		if (response.status === 400 || response.status === 200) {
+			const newList = await fetchItems();
+			setItems(newList);
+		} else {
+			return Error("I couldn't fetch the data");
+		}
 	}
 
-	function fetchItems() {
-		let response;
+	async function fetchItems() {
+		const response = await fetch(endpoint, {
+			...requestOptions,
+			method: "GET",
+		});
 
-		fetch(endpoint, { ...requestOptions, method: "GET" })
-			.then((response) => response.json())
-			.then((json) => {
-				response = structureItems(json);
-			})
-			.catch((error) => console.log(error));
+		const json = await response.json();
+		const newList = structureItems(json);
 
-		console.log(response);
-		return response;
+		return newList;
 	}
 
 	function structureItems(json) {
 		return json.map((jsonItem) => jsonItem.label);
 	}
 
-	useEffect(() => {
-		// console.log("aaaa", initializeItems());
-	}, []);
+	useEffect(() => initializeItems(), []);
 
 	return (
 		<ListGroup>
